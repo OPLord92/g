@@ -2,44 +2,78 @@
 <html>
 <head>
     <title>Car Loan Management System</title>
+
     <style>
-        body { font-family: Arial; max-width: 900px; margin: 40px auto; }
-        input, button { padding: 8px; margin: 5px 0; width: 100%; font-size: 15px; }
-        input[readonly] { background-color: #f5f5f5; font-weight: bold; }
-        table { width: 100%; margin-top: 20px; border-collapse: collapse; table-layout: fixed; }
-        table, th, td { border: 1px solid #ccc; }
-        th, td { padding: 8px; text-align: center; word-wrap: break-word; }
-        th { background: #f0f0f0; }
+        body {
+            font-family: Arial;
+            max-width: 900px;
+            margin: 40px auto;
+        }
 
-        /* Set narrow width for action column */
-        th:nth-child(4), td:nth-child(4) { width: 50px; }
+        input, button {
+            padding: 8px;
+            margin: 5px 0;
+            width: 100%;
+            font-size: 15px;
+        }
 
-        /* Small icon-only buttons centered */
+        input[readonly] {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        table, th, td {
+            border: 1px solid #ccc;
+        }
+
+        th, td {
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background: #f0f0f0;
+        }
+
+        /* Smaller Action Column */
+        th:nth-child(4), td:nth-child(4) {
+            width: 60px;
+        }
+
+        /* Icon Buttons */
         .deleteBtn, .undoBtn {
-            padding: 4px;
-            font-size: 16px;
             border: none;
+            background: transparent;
             cursor: pointer;
-            border-radius: 3px;
-            width: 30px;
-            height: 30px;
+            width: 36px;
+            height: 36px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
-            margin: 0 auto;
+            margin: auto;
         }
-        .deleteBtn { background: red; }
-        .undoBtn { background: green; }
 
-        .dateBox { font-weight: bold; margin-bottom: 15px; }
+        .dateBox {
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
     </style>
 </head>
+
 <body>
 
 <h2>Car Loan Management System</h2>
 
-<div class="dateBox">Current Date: <span id="currentDate"></span></div>
+<div class="dateBox">
+    Current Date: <span id="currentDate"></span>
+</div>
 
 <label>Outstanding (RM):</label>
 <input type="text" id="outstanding" readonly>
@@ -51,6 +85,7 @@
 <button onclick="resetData()">Reset All Data</button>
 
 <h3>Payment History</h3>
+
 <table>
     <thead>
         <tr>
@@ -66,10 +101,15 @@
 <script>
 let history = JSON.parse(localStorage.getItem("loanHistory")) || [];
 let deletedRows = {};
-let outstanding = parseFloat(localStorage.getItem("loanOutstanding")) || 20031.45;
+
+// ✅ Your new outstanding
+let outstanding = parseFloat(localStorage.getItem("loanOutstanding")) || 57504.31;
 
 function format(num) {
-    return num.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return num.toLocaleString('en-MY', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
 }
 
 function getCurrentDate() {
@@ -83,14 +123,26 @@ function makePayment() {
     let paymentInput = document.getElementById("payment").value;
     let payment = parseFloat(paymentInput.replace(/,/g, ''));
 
-    if (isNaN(payment) || payment <= 0) { alert("Invalid payment amount"); return; }
-    if (payment > outstanding) { alert("Payment exceeds outstanding"); return; }
+    if (isNaN(payment) || payment <= 0) {
+        alert("Invalid payment amount");
+        return;
+    }
+
+    if (payment > outstanding) {
+        alert("Payment exceeds outstanding");
+        return;
+    }
 
     outstanding -= payment;
 
-    let record = { date: getCurrentDate(), payment: payment, remaining: outstanding };
+    let record = {
+        date: getCurrentDate(),
+        payment: payment,
+        remaining: outstanding
+    };
 
     history.push(record);
+
     localStorage.setItem("loanHistory", JSON.stringify(history));
     localStorage.setItem("loanOutstanding", outstanding);
 
@@ -110,8 +162,13 @@ function deleteRow(index) {
     deletedRow.id = "row-" + index;
     deletedRow.innerHTML = `
         <td colspan="3">Payment History Deleted</td>
-        <td><button class="undoBtn" onclick="undoDelete(${index})" title="Undo Delete">↩️</button></td>
+        <td>
+            <button class="undoBtn" onclick="undoDelete(${index})" title="Undo">
+                <img src="d19573a2-0982-4846-bca9-784d04f62dd6.png" width="22">
+            </button>
+        </td>
     `;
+
     table.replaceChild(deletedRow, row);
 
     history.splice(index, 1);
@@ -139,30 +196,24 @@ function renderTable() {
             <td>${r.date}</td>
             <td>RM ${format(r.payment)}</td>
             <td>RM ${format(r.remaining)}</td>
-            <td><button class="deleteBtn" onclick="deleteRow(${index})" title="Delete Payment">🗑️</button></td>
+            <td>
+                <button class="deleteBtn" onclick="deleteRow(${index})" title="Delete">
+                    <img src="1b0e4c46-bbae-46a7-af9c-a0c14a6acc0d.png" width="22">
+                </button>
+            </td>
         `;
         table.appendChild(row);
-    });
-
-    Object.keys(deletedRows).forEach(index => {
-        const undoRow = document.createElement("tr");
-        undoRow.id = "row-" + index;
-        undoRow.innerHTML = `
-            <td colspan="3">Payment History Deleted</td>
-            <td><button class="undoBtn" onclick="undoDelete(${index})" title="Undo Delete">↩️</button></td>
-        `;
-        table.appendChild(undoRow);
     });
 
     document.getElementById("outstanding").value = format(outstanding);
 }
 
 function resetData() {
-    if (confirm("Are you sure to reset all data?")) {
+    if (confirm("Reset all data?")) {
         localStorage.clear();
         history = [];
         deletedRows = {};
-        outstanding = 20031.45;
+        outstanding = 57504.31;
         renderTable();
     }
 }
