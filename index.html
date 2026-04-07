@@ -1,252 +1,173 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>UOB Outstanding Payment</title>
+    <title>Car Loan Management System</title>
     <style>
-        body { font-family: Arial; background: #f4f6f9; padding: 30px; }
-        .container { max-width: 600px; margin:auto; background:white; padding:20px; border-radius:10px; box-shadow:0 5px 15px rgba(0,0,0,0.1); }
-        h2{text-align:center;}
-        .outstanding { font-size:22px; font-weight:bold; margin-bottom:15px; }
-        input { width:100%; padding:8px; margin-bottom:10px; font-size:16px; box-sizing: border-box; }
+        body { font-family: Arial; max-width: 900px; margin: 40px auto; }
+        input, button { padding: 8px; margin: 5px 0; width: 100%; font-size: 15px; }
+        input[readonly] { background-color: #f5f5f5; font-weight: bold; }
+        table { width: 100%; margin-top: 20px; border-collapse: collapse; table-layout: fixed; }
+        table, th, td { border: 1px solid #ccc; }
+        th, td { padding: 8px; text-align: center; word-wrap: break-word; }
+        th { background: #f0f0f0; }
 
-        /* Hide number input spinner */
-        input[type=number]::-webkit-inner-spin-button,
-        input[type=number]::-webkit-outer-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
+        /* Set narrow width for action column */
+        th:nth-child(4), td:nth-child(4) { width: 50px; }
+
+        /* Small icon-only buttons centered */
+        .deleteBtn, .undoBtn {
+            padding: 4px;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+            border-radius: 3px;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            margin: 0 auto;
         }
-        input[type=number] {
-            -moz-appearance: textfield;
-        }
+        .deleteBtn { background: red; }
+        .undoBtn { background: green; }
 
-        button {
-            border:none;
-            cursor:pointer;
-            border-radius:5px;
-            margin-top:5px;
-            font-size:12px;
-            padding:5px 10px;
-            color:white;
-        }
-
-        .make-payment-btn { background-color:#d71920; }
-        .make-payment-btn:hover { background-color:#a81418; }
-
-        .delete-btn { background-color:#d71920; }
-        .delete-btn:hover { background-color:#a81418; }
-
-        .undo-btn { background-color:#f39c12; }
-        .undo-btn:hover { background-color:#d68910; }
-
-        .reset-btn { background-color:#555; margin-top:10px; }
-        .reset-btn:hover { background-color:#333; }
-
-        table { width:100%; margin-top:20px; border-collapse:collapse; table-layout: fixed; }
-        table, th, td { border:1px solid #ddd; }
-        th, td { padding:8px; text-align:center; word-wrap:break-word; }
-        th { background-color:#f2f2f2; }
-
-        .deleted-text { color:#888; font-style:italic; text-align:center; }
+        .dateBox { font-weight: bold; margin-bottom: 15px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>UOB Outstanding Payment</h2>
+<h2>Car Loan Management System</h2>
 
-    <div class="outstanding">
-        Outstanding: RM <span id="balance">3150.00</span>
-    </div>
+<div class="dateBox">Current Date: <span id="currentDate"></span></div>
 
-    <input type="number" id="paymentAmount" placeholder="Enter Payment Amount" step="0.01">
-    <button class="make-payment-btn" onclick="makePayment()">Make Payment</button>
-    <button class="reset-btn" onclick="resetAll()">Reset</button>
+<label>Outstanding (RM):</label>
+<input type="text" id="outstanding" readonly>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Payment (RM)</th>
-                <th>Outstanding After Payment (RM)</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody id="historyTable"></tbody>
-    </table>
-</div>
+<label>Payment (RM):</label>
+<input type="text" id="payment" placeholder="Enter payment amount">
+
+<button onclick="makePayment()">Make Payment</button>
+<button onclick="resetData()">Reset All Data</button>
+
+<h3>Payment History</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Payment</th>
+            <th>Outstanding After Payment</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody id="historyTable"></tbody>
+</table>
 
 <script>
-const DAILY_INTEREST = 1.56;
-const ORIGINAL_OUTSTANDING = 3150.00;
+let history = JSON.parse(localStorage.getItem("loanHistory")) || [];
+let deletedRows = {};
+let outstanding = parseFloat(localStorage.getItem("loanOutstanding")) || 20031.45;
 
-let outstanding = ORIGINAL_OUTSTANDING;
-let lastInterestDate = null;
-
-// Load data
-function loadData() {
-    const savedData = JSON.parse(localStorage.getItem("uobData"));
-    if (savedData) {
-        outstanding = savedData.outstanding;
-        lastInterestDate = new Date(savedData.lastInterestDate);
-        document.getElementById("balance").innerText = outstanding.toFixed(2);
-
-        savedData.history.forEach(item => {
-            addRow(item.date, item.payment, item.outstanding, false);
-        });
-    }
+function format(num) {
+    return num.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// Save data (ONLY active rows)
-function saveData() {
-    const table = document.getElementById("historyTable");
-    const history = [];
-
-    for (let i = 0; i < table.rows.length; i++) {
-        const r = table.rows[i];
-
-        // Skip temporary deleted rows
-        if (r.dataset.tempDeleted === "true") continue;
-
-        history.push({
-            date: r.dataset.date,
-            payment: parseFloat(r.dataset.payment),
-            outstanding: parseFloat(r.dataset.outstanding)
-        });
-    }
-
-    localStorage.setItem("uobData", JSON.stringify({
-        outstanding: outstanding,
-        lastInterestDate: lastInterestDate,
-        history: history
-    }));
+function getCurrentDate() {
+    return new Date().toLocaleDateString('en-MY');
 }
 
-// Interest calculation
-function applyInterest() {
-    const today = new Date();
-    if (!lastInterestDate) lastInterestDate = today;
+document.getElementById("currentDate").innerText = getCurrentDate();
+document.getElementById("outstanding").value = format(outstanding);
 
-    const diffDays = Math.floor((today - new Date(lastInterestDate)) / (1000*60*60*24));
-
-    if (diffDays > 0) {
-        outstanding += diffDays * DAILY_INTEREST;
-        outstanding = parseFloat(outstanding.toFixed(2));
-        document.getElementById("balance").innerText = outstanding.toFixed(2);
-        lastInterestDate = today;
-        saveData();
-    }
-}
-
-// Add row
-function addRow(date, payment, newOutstanding, save=true) {
-    const table = document.getElementById("historyTable");
-    let row = table.insertRow(0);
-
-    row.dataset.date = date;
-    row.dataset.payment = payment;
-    row.dataset.outstanding = newOutstanding;
-
-    row.insertCell(0).innerText = date;
-    row.insertCell(1).innerText = payment.toFixed(2);
-    row.insertCell(2).innerText = newOutstanding.toFixed(2);
-
-    const actionCell = row.insertCell(3);
-    const deleteBtn = document.createElement("button");
-    deleteBtn.innerText = "Delete";
-    deleteBtn.className = "delete-btn";
-    deleteBtn.onclick = function() { tempDelete(row); };
-    actionCell.appendChild(deleteBtn);
-
-    if (save) saveData();
-}
-
-// Temporary delete with undo
-function tempDelete(row) {
-    row.dataset.tempDeleted = "true";
-
-    const oldData = {
-        date: row.dataset.date,
-        payment: row.dataset.payment,
-        outstanding: row.dataset.outstanding
-    };
-
-    row.innerHTML = "";
-
-    const msgCell = row.insertCell(0);
-    msgCell.colSpan = 3;
-    msgCell.innerText = "Payment temporarily deleted";
-    msgCell.className = "deleted-text";
-
-    const actionCell = row.insertCell(1);
-    const undoBtn = document.createElement("button");
-    undoBtn.innerText = "Undo";
-    undoBtn.className = "undo-btn";
-
-    undoBtn.onclick = function () {
-        row.dataset.tempDeleted = "false";
-        row.innerHTML = "";
-
-        row.dataset.date = oldData.date;
-        row.dataset.payment = oldData.payment;
-        row.dataset.outstanding = oldData.outstanding;
-
-        row.insertCell(0).innerText = oldData.date;
-        row.insertCell(1).innerText = parseFloat(oldData.payment).toFixed(2);
-        row.insertCell(2).innerText = parseFloat(oldData.outstanding).toFixed(2);
-
-        const actionCell2 = row.insertCell(3);
-        const deleteBtn = document.createElement("button");
-        deleteBtn.innerText = "Delete";
-        deleteBtn.className = "delete-btn";
-        deleteBtn.onclick = function () { tempDelete(row); };
-        actionCell2.appendChild(deleteBtn);
-    };
-
-    actionCell.appendChild(undoBtn);
-}
-
-// Make payment
 function makePayment() {
-    applyInterest();
+    let paymentInput = document.getElementById("payment").value;
+    let payment = parseFloat(paymentInput.replace(/,/g, ''));
 
-    let paymentInput = document.getElementById("paymentAmount");
-    let payment = parseFloat(paymentInput.value);
-
-    if (isNaN(payment) || payment <= 0) {
-        alert("Please enter a valid payment amount.");
-        return;
-    }
-
-    if (payment > outstanding) payment = outstanding;
+    if (isNaN(payment) || payment <= 0) { alert("Invalid payment amount"); return; }
+    if (payment > outstanding) { alert("Payment exceeds outstanding"); return; }
 
     outstanding -= payment;
-    outstanding = parseFloat(outstanding.toFixed(2));
-    document.getElementById("balance").innerText = outstanding.toFixed(2);
 
-    const today = new Date().toLocaleDateString(navigator.language);
-    addRow(today, payment, outstanding);
+    let record = { date: getCurrentDate(), payment: payment, remaining: outstanding };
 
-    paymentInput.value = "";
+    history.push(record);
+    localStorage.setItem("loanHistory", JSON.stringify(history));
+    localStorage.setItem("loanOutstanding", outstanding);
 
-    if (outstanding === 0) {
-        alert("🎉 Payment Fully Settled!");
+    document.getElementById("outstanding").value = format(outstanding);
+    document.getElementById("payment").value = "";
+
+    renderTable();
+}
+
+function deleteRow(index) {
+    deletedRows[index] = history[index];
+
+    const table = document.getElementById("historyTable");
+    const row = document.getElementById("row-" + index);
+
+    const deletedRow = document.createElement("tr");
+    deletedRow.id = "row-" + index;
+    deletedRow.innerHTML = `
+        <td colspan="3">Payment History Deleted</td>
+        <td><button class="undoBtn" onclick="undoDelete(${index})" title="Undo Delete">↩️</button></td>
+    `;
+    table.replaceChild(deletedRow, row);
+
+    history.splice(index, 1);
+    localStorage.setItem("loanHistory", JSON.stringify(history));
+}
+
+function undoDelete(index) {
+    if (!deletedRows[index]) return;
+
+    history.splice(index, 0, deletedRows[index]);
+    delete deletedRows[index];
+
+    localStorage.setItem("loanHistory", JSON.stringify(history));
+    renderTable();
+}
+
+function renderTable() {
+    const table = document.getElementById("historyTable");
+    table.innerHTML = "";
+
+    history.forEach((r, index) => {
+        const row = document.createElement("tr");
+        row.id = "row-" + index;
+        row.innerHTML = `
+            <td>${r.date}</td>
+            <td>RM ${format(r.payment)}</td>
+            <td>RM ${format(r.remaining)}</td>
+            <td><button class="deleteBtn" onclick="deleteRow(${index})" title="Delete Payment">🗑️</button></td>
+        `;
+        table.appendChild(row);
+    });
+
+    Object.keys(deletedRows).forEach(index => {
+        const undoRow = document.createElement("tr");
+        undoRow.id = "row-" + index;
+        undoRow.innerHTML = `
+            <td colspan="3">Payment History Deleted</td>
+            <td><button class="undoBtn" onclick="undoDelete(${index})" title="Undo Delete">↩️</button></td>
+        `;
+        table.appendChild(undoRow);
+    });
+
+    document.getElementById("outstanding").value = format(outstanding);
+}
+
+function resetData() {
+    if (confirm("Are you sure to reset all data?")) {
+        localStorage.clear();
+        history = [];
+        deletedRows = {};
+        outstanding = 20031.45;
+        renderTable();
     }
 }
 
-// Reset
-function resetAll() {
-    if (!confirm("Reset all data?")) return;
-
-    outstanding = ORIGINAL_OUTSTANDING;
-    lastInterestDate = null;
-    document.getElementById("balance").innerText = outstanding.toFixed(2);
-
-    document.getElementById("historyTable").innerHTML = "";
-    localStorage.removeItem("uobData");
-}
-
-loadData();
-applyInterest();
+renderTable();
 </script>
 
 </body>
