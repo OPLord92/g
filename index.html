@@ -42,7 +42,7 @@
             background: #f0f0f0;
         }
 
-        /* Smaller Action Column */
+        /* Narrow Action Column */
         th:nth-child(4), td:nth-child(4) {
             width: 60px;
         }
@@ -58,6 +58,11 @@
             align-items: center;
             justify-content: center;
             margin: auto;
+        }
+
+        .deleteBtn img, .undoBtn img {
+            width: 20px;
+            height: 20px;
         }
 
         .dateBox {
@@ -102,11 +107,10 @@
 let history = JSON.parse(localStorage.getItem("loanHistory")) || [];
 let deletedRows = {};
 
-// ✅ Your new outstanding
 let outstanding = parseFloat(localStorage.getItem("loanOutstanding")) || 57504.31;
 
 function format(num) {
-    return num.toLocaleString('en-MY', {
+    return Number(num).toLocaleString('en-MY', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
     });
@@ -164,7 +168,7 @@ function deleteRow(index) {
         <td colspan="3">Payment History Deleted</td>
         <td>
             <button class="undoBtn" onclick="undoDelete(${index})" title="Undo">
-                <img src="d19573a2-0982-4846-bca9-784d04f62dd6.png" width="22">
+                <img src="https://cdn-icons-png.flaticon.com/512/54/54602.png">
             </button>
         </td>
     `;
@@ -198,7 +202,7 @@ function renderTable() {
             <td>RM ${format(r.remaining)}</td>
             <td>
                 <button class="deleteBtn" onclick="deleteRow(${index})" title="Delete">
-                    <img src="1b0e4c46-bbae-46a7-af9c-a0c14a6acc0d.png" width="22">
+                    <img src="https://cdn-icons-png.flaticon.com/512/1214/1214428.png">
                 </button>
             </td>
         `;
