@@ -5,7 +5,154 @@
 
     <style>
         body {
-        
+            font-family: Arial;
+            max-width: 900px;
+            margin: 40px auto;
+        }
+
+        input, button {
+            padding: 8px;
+            margin: 5px 0;
+            width: 100%;
+            font-size: 15px;
+        }
+
+        input[readonly] {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        table, th, td {
+            border: 1px solid #ccc;
+        }
+
+        th, td {
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background: #f0f0f0;
+        }
+
+        /* Narrow Action Column */
+        th:nth-child(4), td:nth-child(4) {
+            width: 60px;
+        }
+
+        /* Icon Buttons */
+        .deleteBtn, .undoBtn {
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: auto;
+        }
+
+        .deleteBtn img, .undoBtn img {
+            width: 20px;
+            height: 20px;
+        }
+
+        .dateBox {
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>Car Loan Management System</h2>
+
+<div class="dateBox">
+    Current Date: <span id="currentDate"></span>
+</div>
+
+<label>Outstanding (RM):</label>
+<input type="text" id="outstanding" readonly>
+
+<label>Payment (RM):</label>
+<input type="text" id="payment" placeholder="Enter payment amount">
+
+<button onclick="makePayment()">Make Payment</button>
+<button onclick="resetData()">Reset All Data</button>
+
+<h3>Payment History</h3>
+
+<table>
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Payment</th>
+            <th>Outstanding After Payment</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody id="historyTable"></tbody>
+</table>
+
+<script>
+let history = JSON.parse(localStorage.getItem("loanHistory")) || [];
+let deletedRows = {};
+
+let outstanding = parseFloat(localStorage.getItem("loanOutstanding")) || 57504.31;
+
+function format(num) {
+    return Number(num).toLocaleString('en-MY', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+function getCurrentDate() {
+    return new Date().toLocaleDateString('en-MY');
+}
+
+document.getElementById("currentDate").innerText = getCurrentDate();
+document.getElementById("outstanding").value = format(outstanding);
+
+function makePayment() {
+    let paymentInput = document.getElementById("payment").value;
+    let payment = parseFloat(paymentInput.replace(/,/g, ''));
+
+    if (isNaN(payment) || payment <= 0) {
+        alert("Invalid payment amount");
+        return;
+    }
+
+    if (payment > outstanding) {
+        alert("Payment exceeds outstanding");
+        return;
+    }
+
+    outstanding -= payment;
+
+    let record = {
+        date: getCurrentDate(),
+        payment: payment,
+        remaining: outstanding
+    };
+
+    history.push(record);
+
+    localStorage.setItem("loanHistory", JSON.stringify(history));
+    localStorage.setItem("loanOutstanding", outstanding);
+
+    document.getElementById("outstanding").value = format(outstanding);
+    document.getElementById("payment").value = "";
+
     renderTable();
 }
 
