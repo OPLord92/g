@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Car Loan Management System</title>
+    <title>Car Loan Management System (Firebase)</title>
 
     <style>
         body {
@@ -42,27 +42,18 @@
             background: #f0f0f0;
         }
 
-        /* Narrow Action Column */
         th:nth-child(4), td:nth-child(4) {
-            width: 60px;
+            width: 80px;
         }
 
-        /* Icon Buttons */
         .deleteBtn, .undoBtn {
             border: none;
             background: transparent;
             cursor: pointer;
-            width: 36px;
-            height: 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: auto;
         }
 
         .deleteBtn img, .undoBtn img {
             width: 20px;
-            height: 20px;
         }
 
         .dateBox {
@@ -74,7 +65,7 @@
 
 <body>
 
-<h2>Car Loan Management System</h2>
+<h2>Car Loan Management System (Firebase)</h2>
 
 <div class="dateBox">
     Current Date: <span id="currentDate"></span>
@@ -96,19 +87,53 @@
         <tr>
             <th>Date</th>
             <th>Payment</th>
-            <th>Outstanding After Payment</th>
+            <th>Remaining</th>
             <th>Action</th>
         </tr>
     </thead>
     <tbody id="historyTable"></tbody>
 </table>
 
-<script>
-let history = JSON.parse(localStorage.getItem("loanHistory")) || [];
-let deletedRows = {};
+<!-- ================= FIREBASE ================= -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+    getDatabase,
+    ref,
+    set,
+    push,
+    onValue,
+    remove
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-let outstanding = parseFloat(localStorage.getItem("loanOutstanding")) || 57504.31;
+/* 🔥 YOUR FIREBASE CONFIG HERE */
 
+const firebaseConfig = {
+
+  apiKey: "AIzaSyCe185glXDN4rh5XeagVMLGjSxcg6g2ZQI",
+
+  authDomain: "oplord-carloan.firebaseapp.com",
+
+  projectId: "oplord-carloan",
+
+  storageBucket: "oplord-carloan.firebasestorage.app",
+
+  messagingSenderId: "484543734858",
+
+  appId: "1:484543734858:web:9aeb6d9c7011e3c4f2f2b3",
+
+  measurementId: "G-D0NXWNX169"
+
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+/* ================= VARIABLES ================= */
+let history = [];
+let outstanding = 57504.31;
+
+/* ================= UI ================= */
 function format(num) {
     return Number(num).toLocaleString('en-MY', {
         minimumFractionDigits: 2,
@@ -121,14 +146,46 @@ function getCurrentDate() {
 }
 
 document.getElementById("currentDate").innerText = getCurrentDate();
-document.getElementById("outstanding").value = format(outstanding);
 
-function makePayment() {
-    let paymentInput = document.getElementById("payment").value;
-    let payment = parseFloat(paymentInput.replace(/,/g, ''));
+/* ================= LOAD FIREBASE ================= */
+function loadData() {
+    onValue(ref(db, "loan"), (snapshot) => {
+        const data = snapshot.val();
+
+        if (data) {
+            outstanding = data.outstanding ?? 57504.31;
+
+            history = [];
+
+            if (data.history) {
+                Object.keys(data.history).forEach(key => {
+                    history.push({
+                        id: key,
+                        ...data.history[key]
+                    });
+                });
+            }
+        }
+
+        document.getElementById("outstanding").value = format(outstanding);
+        renderTable();
+    });
+}
+
+/* ================= SAVE OUTSTANDING ================= */
+function saveOutstanding() {
+    set(ref(db, "loan/outstanding"), outstanding);
+}
+
+/* ================= PAYMENT ================= */
+window.makePayment = function () {
+
+    let payment = parseFloat(
+        document.getElementById("payment").value.replace(/,/g, '')
+    );
 
     if (isNaN(payment) || payment <= 0) {
-        alert("Invalid payment amount");
+        alert("Invalid payment");
         return;
     }
 
@@ -145,84 +202,56 @@ function makePayment() {
         remaining: outstanding
     };
 
-    history.push(record);
+    push(ref(db, "loan/history"), record);
 
-    localStorage.setItem("loanHistory", JSON.stringify(history));
-    localStorage.setItem("loanOutstanding", outstanding);
+    saveOutstanding();
 
-    document.getElementById("outstanding").value = format(outstanding);
     document.getElementById("payment").value = "";
+};
 
-    renderTable();
-}
+/* ================= DELETE ================= */
+window.deleteRow = function (id) {
+    if (confirm("Delete this record?")) {
+        remove(ref(db, "loan/history/" + id));
+    }
+};
 
-function deleteRow(index) {
-    deletedRows[index] = history[index];
+/* ================= RESET ================= */
+window.resetData = function () {
+    if (confirm("Reset ALL data?")) {
+        remove(ref(db, "loan"));
+        outstanding = 57504.31;
+    }
+};
 
-    const table = document.getElementById("historyTable");
-    const row = document.getElementById("row-" + index);
-
-    const deletedRow = document.createElement("tr");
-    deletedRow.id = "row-" + index;
-    deletedRow.innerHTML = `
-        <td colspan="3">Payment History Deleted</td>
-        <td>
-            <button class="undoBtn" onclick="undoDelete(${index})" title="Undo">
-                <img src="https://cdn-icons-png.flaticon.com/512/54/54602.png">
-            </button>
-        </td>
-    `;
-
-    table.replaceChild(deletedRow, row);
-
-    history.splice(index, 1);
-    localStorage.setItem("loanHistory", JSON.stringify(history));
-}
-
-function undoDelete(index) {
-    if (!deletedRows[index]) return;
-
-    history.splice(index, 0, deletedRows[index]);
-    delete deletedRows[index];
-
-    localStorage.setItem("loanHistory", JSON.stringify(history));
-    renderTable();
-}
-
+/* ================= RENDER TABLE ================= */
 function renderTable() {
     const table = document.getElementById("historyTable");
     table.innerHTML = "";
 
-    history.forEach((r, index) => {
+    history.forEach(r => {
         const row = document.createElement("tr");
-        row.id = "row-" + index;
+
         row.innerHTML = `
             <td>${r.date}</td>
             <td>RM ${format(r.payment)}</td>
             <td>RM ${format(r.remaining)}</td>
             <td>
-                <button class="deleteBtn" onclick="deleteRow(${index})" title="Delete">
-                    <img src="https://cdn-icons-png.flaticon.com/512/1214/1214428.png">
+                <button class="deleteBtn" onclick="deleteRow('${r.id}')">
+                    🗑️
                 </button>
             </td>
         `;
+
         table.appendChild(row);
     });
 
     document.getElementById("outstanding").value = format(outstanding);
 }
 
-function resetData() {
-    if (confirm("Reset all data?")) {
-        localStorage.clear();
-        history = [];
-        deletedRows = {};
-        outstanding = 57504.31;
-        renderTable();
-    }
-}
+/* ================= START ================= */
+loadData();
 
-renderTable();
 </script>
 
 </body>
