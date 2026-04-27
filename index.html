@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Car Loan Management System (Firebase)</title>
+    <title>Car Loan Management System (Fixed Firebase)</title>
 
     <style>
         body {
@@ -46,14 +46,11 @@
             width: 80px;
         }
 
-        .deleteBtn, .undoBtn {
+        .deleteBtn {
             border: none;
             background: transparent;
             cursor: pointer;
-        }
-
-        .deleteBtn img, .undoBtn img {
-            width: 20px;
+            font-size: 18px;
         }
 
         .dateBox {
@@ -65,7 +62,7 @@
 
 <body>
 
-<h2>Car Loan Management System (Firebase)</h2>
+<h2>Car Loan Management System (Firebase Fixed)</h2>
 
 <div class="dateBox">
     Current Date: <span id="currentDate"></span>
@@ -96,6 +93,7 @@
 
 <!-- ================= FIREBASE ================= -->
 <script type="module">
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
     getDatabase,
@@ -106,7 +104,8 @@ import {
     remove
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-/* 🔥 YOUR FIREBASE CONFIG HERE */
+/* 🔥 FIREBASE CONFIG (REPLACE THIS) */
+
 const firebaseConfig = {
   apiKey: "AIzaSyCe185glXDN4rh5XeagVMLGjSxcg6g2ZQI",
   authDomain: "oplord-carloan.firebaseapp.com",
@@ -116,13 +115,13 @@ const firebaseConfig = {
   appId: "1:484543734858:web:9aeb6d9c7011e3c4f2f2b3",
   measurementId: "G-D0NXWNX169"
 };
-
+    
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-/* ================= VARIABLES ================= */
+/* ================= DATA ================= */
 let history = [];
-let outstanding = 57504.31;
+let outstanding = 57517.55;
 
 /* ================= UI ================= */
 function format(num) {
@@ -138,24 +137,31 @@ function getCurrentDate() {
 
 document.getElementById("currentDate").innerText = getCurrentDate();
 
-/* ================= LOAD FIREBASE ================= */
+/* ================= LOAD DATA ================= */
 function loadData() {
     onValue(ref(db, "loan"), (snapshot) => {
         const data = snapshot.val();
 
-        if (data) {
-            outstanding = data.outstanding ?? 57504.31;
+        console.log("Firebase Data:", data);
 
-            history = [];
+        if (!data) {
+            outstanding = 57517.55;
+            document.getElementById("outstanding").value = format(outstanding);
+            renderTable();
+            return;
+        }
 
-            if (data.history) {
-                Object.keys(data.history).forEach(key => {
-                    history.push({
-                        id: key,
-                        ...data.history[key]
-                    });
+        outstanding = data.outstanding ?? 57517.55;
+
+        history = [];
+
+        if (data.history) {
+            Object.keys(data.history).forEach(key => {
+                history.push({
+                    id: key,
+                    ...data.history[key]
                 });
-            }
+            });
         }
 
         document.getElementById("outstanding").value = format(outstanding);
@@ -211,7 +217,8 @@ window.deleteRow = function (id) {
 window.resetData = function () {
     if (confirm("Reset ALL data?")) {
         remove(ref(db, "loan"));
-        outstanding = 57504.31;
+        outstanding = 57517.55;
+        document.getElementById("outstanding").value = format(outstanding);
     }
 };
 
@@ -228,16 +235,12 @@ function renderTable() {
             <td>RM ${format(r.payment)}</td>
             <td>RM ${format(r.remaining)}</td>
             <td>
-                <button class="deleteBtn" onclick="deleteRow('${r.id}')">
-                    🗑️
-                </button>
+                <button class="deleteBtn" onclick="deleteRow('${r.id}')">🗑️</button>
             </td>
         `;
 
         table.appendChild(row);
     });
-
-    document.getElementById("outstanding").value = format(outstanding);
 }
 
 /* ================= START ================= */
