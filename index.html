@@ -38,14 +38,24 @@
             background: #f0f0f0;
         }
 
-        .deleteBtn {
+        .btn {
             border: none;
-            background: transparent;
             cursor: pointer;
+            padding: 6px 10px;
         }
 
-        .deleteBtn img {
-            width: 20px;
+        .deleteBtn {
+            background: transparent;
+        }
+
+        .undoBtn {
+            background: orange;
+            color: white;
+        }
+
+        .deletedRow {
+            color: red;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -91,7 +101,7 @@ import {
     serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// 🔥 YOUR FIREBASE CONFIG HERE
+// 🔥 YOUR FIREBASE CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyCe185glXDN4rh5XeagVMLGjSxcg6g2ZQI",
   authDomain: "oplord-carloan.firebaseapp.com",
@@ -110,6 +120,7 @@ const INITIAL_LOAN = 57517.55;
 
 let history = [];
 let outstanding = INITIAL_LOAN;
+let deletedCache = {};
 
 // ===== UTIL =====
 function format(num) {
@@ -135,21 +146,29 @@ async function loadData() {
     snapshot.forEach(docSnap => {
         history.push({
             id: docSnap.id,
-            ...docSnap.data()
+            ...docSnap.data(),
+            deleted: false
         });
     });
 
-    // ✅ Recalculate outstanding (BEST METHOD)
-    outstanding = INITIAL_LOAN;
-
-    history.forEach(r => {
-        outstanding -= r.payment;
-    });
-
+    recalcOutstanding();
     renderTable();
 }
 
-// ===== ADD =====
+// ===== RECALCULATE =====
+function recalcOutstanding() {
+    outstanding = INITIAL_LOAN;
+
+    history.forEach(r => {
+        if (!r.deleted) {
+            outstanding -= r.payment;
+        }
+    });
+
+    document.getElementById("outstanding").value = format(outstanding);
+}
+
+// ===== ADD PAYMENT =====
 window.makePayment = async function () {
     let payment = parseFloat(document.getElementById("payment").value);
 
@@ -170,16 +189,33 @@ window.makePayment = async function () {
     });
 
     document.getElementById("payment").value = "";
-
     loadData();
 };
 
-// ===== DELETE =====
-window.deleteRow = async function (index) {
+// ===== DELETE (SOFT) =====
+window.deleteRow = function (index) {
+    history[index].deleted = true;
+    deletedCache[index] = history[index];
+
+    recalcOutstanding();
+    renderTable();
+};
+
+// ===== UNDO =====
+window.undoDelete = function (index) {
+    if (!deletedCache[index]) return;
+
+    history[index].deleted = false;
+    delete deletedCache[index];
+
+    recalcOutstanding();
+    renderTable();
+};
+
+// ===== OPTIONAL: PERMANENT DELETE =====
+window.confirmDelete = async function (index) {
     const record = history[index];
-
     await deleteDoc(doc(db, "loanHistory", record.id));
-
     loadData();
 };
 
@@ -191,20 +227,26 @@ function renderTable() {
     history.forEach((r, index) => {
         const row = document.createElement("tr");
 
-        row.innerHTML = `
-            <td>${r.date}</td>
-            <td>RM ${format(r.payment)}</td>
-            <td>
-                <button class="deleteBtn" onclick="deleteRow(${index})">
-                    <img src="https://cdn-icons-png.flaticon.com/512/1214/1214428.png">
-                </button>
-            </td>
-        `;
+        if (r.deleted) {
+            row.classList.add("deletedRow");
+            row.innerHTML = `
+                <td colspan="2">Payment Deleted</td>
+                <td>
+                    <button class="btn undoBtn" onclick="undoDelete(${index})">Undo</button>
+                </td>
+            `;
+        } else {
+            row.innerHTML = `
+                <td>${r.date}</td>
+                <td>RM ${format(r.payment)}</td>
+                <td>
+                    <button class="btn deleteBtn" onclick="deleteRow(${index})">🗑</button>
+                </td>
+            `;
+        }
 
         table.appendChild(row);
     });
-
-    document.getElementById("outstanding").value = format(outstanding);
 }
 
 // INIT
