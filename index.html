@@ -78,6 +78,18 @@
 </table>
 
 <script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+    getFirestore,
+    collection,
+    addDoc,
+    getDocs,
+    deleteDoc,
+    doc,
+    query,
+    orderBy,
+    serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // 🔥 YOUR FIREBASE CONFIG HERE
 const firebaseConfig = {
@@ -94,7 +106,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // ===== SETTINGS =====
-const INITIAL_LOAN = 57517.55;
+const INITIAL_LOAN = 57504.31;
 
 let history = [];
 let outstanding = INITIAL_LOAN;
