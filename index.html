@@ -42,27 +42,20 @@
             background: #f0f0f0;
         }
 
-        /* Narrow Action Column */
         th:nth-child(4), td:nth-child(4) {
             width: 60px;
         }
 
-        /* Icon Buttons */
-        .deleteBtn, .undoBtn {
+        .deleteBtn {
             border: none;
             background: transparent;
             cursor: pointer;
             width: 36px;
             height: 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: auto;
         }
 
-        .deleteBtn img, .undoBtn img {
+        .deleteBtn img {
             width: 20px;
-            height: 20px;
         }
 
         .dateBox {
@@ -87,7 +80,6 @@
 <input type="text" id="payment" placeholder="Enter payment amount">
 
 <button onclick="makePayment()">Make Payment</button>
-<button onclick="resetData()">Reset All Data</button>
 
 <h3>Payment History</h3>
 
@@ -103,12 +95,40 @@
     <tbody id="historyTable"></tbody>
 </table>
 
-<script>
-let history = JSON.parse(localStorage.getItem("loanHistory")) || [];
-let deletedRows = {};
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { 
+    getFirestore, 
+    collection, 
+    addDoc, 
+    getDocs, 
+    deleteDoc, 
+    doc,
+    query,
+    orderBy
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-let outstanding = parseFloat(localStorage.getItem("loanOutstanding")) || 57504.31;
+// 🔥 REPLACE THIS WITH YOUR CONFIG
+const firebaseConfig = {
+  apiKey: "AIzaSyCe185glXDN4rh5XeagVMLGjSxcg6g2ZQI",
+  authDomain: "oplord-carloan.firebaseapp.com",
+  projectId: "oplord-carloan",
+  storageBucket: "oplord-carloan.firebasestorage.app",
+  messagingSenderId: "484543734858",
+  appId: "1:484543734858:web:9aeb6d9c7011e3c4f2f2b3",
+  measurementId: "G-D0NXWNX169"
+};
 
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// ===== APP LOGIC =====
+
+let history = [];
+let outstanding = 57504.31;
+
+// Format currency
 function format(num) {
     return Number(num).toLocaleString('en-MY', {
         minimumFractionDigits: 2,
@@ -116,14 +136,37 @@ function format(num) {
     });
 }
 
+// Date
 function getCurrentDate() {
     return new Date().toLocaleDateString('en-MY');
 }
 
 document.getElementById("currentDate").innerText = getCurrentDate();
-document.getElementById("outstanding").value = format(outstanding);
 
-function makePayment() {
+// ===== LOAD DATA =====
+async function loadFromFirestore() {
+    const q = query(collection(db, "loanHistory"), orderBy("date"));
+
+    const snapshot = await getDocs(q);
+
+    history = [];
+
+    snapshot.forEach(docSnap => {
+        history.push({
+            id: docSnap.id,
+            ...docSnap.data()
+        });
+    });
+
+    if (history.length > 0) {
+        outstanding = history[history.length - 1].remaining;
+    }
+
+    renderTable();
+}
+
+// ===== ADD PAYMENT =====
+window.makePayment = async function () {
     let paymentInput = document.getElementById("payment").value;
     let payment = parseFloat(paymentInput.replace(/,/g, ''));
 
@@ -139,90 +182,56 @@ function makePayment() {
 
     outstanding -= payment;
 
-    let record = {
+    const record = {
         date: getCurrentDate(),
         payment: payment,
         remaining: outstanding
     };
 
-    history.push(record);
+    await addDoc(collection(db, "loanHistory"), record);
 
-    localStorage.setItem("loanHistory", JSON.stringify(history));
-    localStorage.setItem("loanOutstanding", outstanding);
-
-    document.getElementById("outstanding").value = format(outstanding);
     document.getElementById("payment").value = "";
 
-    renderTable();
-}
+    loadFromFirestore();
+};
 
-function deleteRow(index) {
-    deletedRows[index] = history[index];
+// ===== DELETE =====
+window.deleteRow = async function (index) {
+    const record = history[index];
 
-    const table = document.getElementById("historyTable");
-    const row = document.getElementById("row-" + index);
+    await deleteDoc(doc(db, "loanHistory", record.id));
 
-    const deletedRow = document.createElement("tr");
-    deletedRow.id = "row-" + index;
-    deletedRow.innerHTML = `
-        <td colspan="3">Payment History Deleted</td>
-        <td>
-            <button class="undoBtn" onclick="undoDelete(${index})" title="Undo">
-                <img src="https://cdn-icons-png.flaticon.com/512/54/54602.png">
-            </button>
-        </td>
-    `;
+    loadFromFirestore();
+};
 
-    table.replaceChild(deletedRow, row);
-
-    history.splice(index, 1);
-    localStorage.setItem("loanHistory", JSON.stringify(history));
-}
-
-function undoDelete(index) {
-    if (!deletedRows[index]) return;
-
-    history.splice(index, 0, deletedRows[index]);
-    delete deletedRows[index];
-
-    localStorage.setItem("loanHistory", JSON.stringify(history));
-    renderTable();
-}
-
+// ===== RENDER =====
 function renderTable() {
     const table = document.getElementById("historyTable");
     table.innerHTML = "";
 
     history.forEach((r, index) => {
         const row = document.createElement("tr");
-        row.id = "row-" + index;
+
         row.innerHTML = `
             <td>${r.date}</td>
             <td>RM ${format(r.payment)}</td>
             <td>RM ${format(r.remaining)}</td>
             <td>
-                <button class="deleteBtn" onclick="deleteRow(${index})" title="Delete">
+                <button class="deleteBtn" onclick="deleteRow(${index})">
                     <img src="https://cdn-icons-png.flaticon.com/512/1214/1214428.png">
                 </button>
             </td>
         `;
+
         table.appendChild(row);
     });
 
     document.getElementById("outstanding").value = format(outstanding);
 }
 
-function resetData() {
-    if (confirm("Reset all data?")) {
-        localStorage.clear();
-        history = [];
-        deletedRows = {};
-        outstanding = 57504.31;
-        renderTable();
-    }
-}
+// INITIAL LOAD
+loadFromFirestore();
 
-renderTable();
 </script>
 
 </body>
