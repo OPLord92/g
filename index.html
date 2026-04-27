@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Car Loan Management System (Fixed Firebase)</title>
+    <title>Car Loan Management System (FIXED)</title>
 
     <style>
         body {
@@ -26,7 +26,6 @@
             width: 100%;
             margin-top: 20px;
             border-collapse: collapse;
-            table-layout: fixed;
         }
 
         table, th, td {
@@ -40,10 +39,6 @@
 
         th {
             background: #f0f0f0;
-        }
-
-        th:nth-child(4), td:nth-child(4) {
-            width: 80px;
         }
 
         .deleteBtn {
@@ -62,7 +57,7 @@
 
 <body>
 
-<h2>Car Loan Management System (Firebase Fixed)</h2>
+<h2>Car Loan Management System (Firebase FIXED)</h2>
 
 <div class="dateBox">
     Current Date: <span id="currentDate"></span>
@@ -104,7 +99,7 @@ import {
     remove
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-/* 🔥 FIREBASE CONFIG (REPLACE THIS) */
+/* 🔥 YOUR FIREBASE CONFIG */
 
 const firebaseConfig = {
   apiKey: "AIzaSyCe185glXDN4rh5XeagVMLGjSxcg6g2ZQI",
@@ -115,7 +110,7 @@ const firebaseConfig = {
   appId: "1:484543734858:web:9aeb6d9c7011e3c4f2f2b3",
   measurementId: "G-D0NXWNX169"
 };
-    
+
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
@@ -137,34 +132,41 @@ function getCurrentDate() {
 
 document.getElementById("currentDate").innerText = getCurrentDate();
 
-/* ================= LOAD DATA ================= */
+/* ================= FIXED LOAD ================= */
 function loadData() {
-    onValue(ref(db, "loan"), (snapshot) => {
-        const data = snapshot.val();
 
-        console.log("Firebase Data:", data);
+    const outRef = ref(db, "loan/outstanding");
+    const histRef = ref(db, "loan/history");
 
-        if (!data) {
+    // OUTSTANDING
+    onValue(outRef, (snap) => {
+
+        if (snap.exists()) {
+            outstanding = snap.val();
+        } else {
             outstanding = 57517.55;
-            document.getElementById("outstanding").value = format(outstanding);
-            renderTable();
-            return;
+            set(outRef, outstanding);
         }
 
-        outstanding = data.outstanding ?? 57517.55;
+        document.getElementById("outstanding").value = format(outstanding);
+    });
+
+    // HISTORY
+    onValue(histRef, (snap) => {
 
         history = [];
 
-        if (data.history) {
-            Object.keys(data.history).forEach(key => {
+        if (snap.exists()) {
+            const data = snap.val();
+
+            Object.keys(data).forEach(key => {
                 history.push({
                     id: key,
-                    ...data.history[key]
+                    ...data[key]
                 });
             });
         }
 
-        document.getElementById("outstanding").value = format(outstanding);
         renderTable();
     });
 }
@@ -222,7 +224,7 @@ window.resetData = function () {
     }
 };
 
-/* ================= RENDER TABLE ================= */
+/* ================= TABLE ================= */
 function renderTable() {
     const table = document.getElementById("historyTable");
     table.innerHTML = "";
