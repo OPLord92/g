@@ -53,6 +53,11 @@
             color: white;
         }
 
+        .resetBtn {
+            background: red;
+            color: white;
+        }
+
         .deletedRow {
             color: red;
             font-weight: bold;
@@ -73,6 +78,7 @@
 <input type="text" id="payment" placeholder="Enter payment amount">
 
 <button onclick="makePayment()">Make Payment</button>
+<button onclick="resetData()" class="resetBtn">Reset All Data</button>
 
 <h3>Payment History</h3>
 
@@ -192,7 +198,7 @@ window.makePayment = async function () {
     loadData();
 };
 
-// ===== DELETE (SOFT) =====
+// ===== SOFT DELETE =====
 window.deleteRow = function (index) {
     history[index].deleted = true;
     deletedCache[index] = history[index];
@@ -212,11 +218,24 @@ window.undoDelete = function (index) {
     renderTable();
 };
 
-// ===== OPTIONAL: PERMANENT DELETE =====
-window.confirmDelete = async function (index) {
-    const record = history[index];
-    await deleteDoc(doc(db, "loanHistory", record.id));
-    loadData();
+// ===== RESET ALL DATA =====
+window.resetData = async function () {
+    if (!confirm("Reset all data? This cannot be undone.")) return;
+
+    const snapshot = await getDocs(collection(db, "loanHistory"));
+
+    const promises = [];
+    snapshot.forEach(docSnap => {
+        promises.push(deleteDoc(doc(db, "loanHistory", docSnap.id)));
+    });
+
+    await Promise.all(promises);
+
+    history = [];
+    deletedCache = {};
+    outstanding = INITIAL_LOAN;
+
+    renderTable();
 };
 
 // ===== RENDER =====
@@ -247,6 +266,8 @@ function renderTable() {
 
         table.appendChild(row);
     });
+
+    document.getElementById("outstanding").value = format(outstanding);
 }
 
 // INIT
