@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8"> <!-- ✅ FIX emoji issue -->
+
     <title>Car Loan Management System</title>
 
     <style>
@@ -41,16 +43,17 @@
         .btn {
             border: none;
             cursor: pointer;
-            padding: 6px 10px;
+            background: transparent;
         }
 
-        .deleteBtn {
-            background: transparent;
+        .btn img {
+            width: 20px;
+            height: 20px;
         }
 
         .undoBtn {
             background: orange;
-            color: white;
+            padding: 5px;
         }
 
         .resetBtn {
@@ -218,9 +221,9 @@ window.undoDelete = function (index) {
     renderTable();
 };
 
-// ===== RESET ALL DATA =====
+// ===== RESET =====
 window.resetData = async function () {
-    if (!confirm("Reset all data? This cannot be undone.")) return;
+    if (!confirm("Reset all data?")) return;
 
     const snapshot = await getDocs(collection(db, "loanHistory"));
 
@@ -251,7 +254,9 @@ function renderTable() {
             row.innerHTML = `
                 <td colspan="2">Payment Deleted</td>
                 <td>
-                    <button class="btn undoBtn" onclick="undoDelete(${index})">Undo</button>
+                    <button class="btn undoBtn" onclick="undoDelete(${index})">
+                        <img src="https://cdn-icons-png.flaticon.com/512/54/54602.png">
+                    </button>
                 </td>
             `;
         } else {
@@ -259,15 +264,15 @@ function renderTable() {
                 <td>${r.date}</td>
                 <td>RM ${format(r.payment)}</td>
                 <td>
-                    <button class="btn deleteBtn" onclick="deleteRow(${index})">🗑</button>
+                    <button class="btn" onclick="deleteRow(${index})">
+                        <img src="https://cdn-icons-png.flaticon.com/512/1214/1214428.png">
+                    </button>
                 </td>
             `;
         }
 
         table.appendChild(row);
     });
-
-    document.getElementById("outstanding").value = format(outstanding);
 }
 
 // INIT
