@@ -26,14 +26,10 @@
             width: 100%;
             margin-top: 20px;
             border-collapse: collapse;
-            table-layout: fixed;
-        }
-
-        table, th, td {
-            border: 1px solid #ccc;
         }
 
         th, td {
+            border: 1px solid #ccc;
             padding: 8px;
             text-align: center;
         }
@@ -42,25 +38,14 @@
             background: #f0f0f0;
         }
 
-        th:nth-child(4), td:nth-child(4) {
-            width: 60px;
-        }
-
         .deleteBtn {
             border: none;
             background: transparent;
             cursor: pointer;
-            width: 36px;
-            height: 36px;
         }
 
         .deleteBtn img {
             width: 20px;
-        }
-
-        .dateBox {
-            font-weight: bold;
-            margin-bottom: 15px;
         }
     </style>
 </head>
@@ -69,9 +54,7 @@
 
 <h2>Car Loan Management System</h2>
 
-<div class="dateBox">
-    Current Date: <span id="currentDate"></span>
-</div>
+<p><strong>Current Date:</strong> <span id="currentDate"></span></p>
 
 <label>Outstanding (RM):</label>
 <input type="text" id="outstanding" readonly>
@@ -88,47 +71,43 @@
         <tr>
             <th>Date</th>
             <th>Payment</th>
-            <th>Outstanding After Payment</th>
             <th>Action</th>
         </tr>
     </thead>
     <tbody id="historyTable"></tbody>
 </table>
 
-<!-- Firebase -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { 
-    getFirestore, 
-    collection, 
-    addDoc, 
-    getDocs, 
-    deleteDoc, 
+import {
+    getFirestore,
+    collection,
+    addDoc,
+    getDocs,
+    deleteDoc,
     doc,
     query,
-    orderBy
+    orderBy,
+    serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// 🔥 REPLACE THIS WITH YOUR CONFIG
+// 🔥 YOUR FIREBASE CONFIG HERE
 const firebaseConfig = {
   apiKey: "AIzaSyCe185glXDN4rh5XeagVMLGjSxcg6g2ZQI",
   authDomain: "oplord-carloan.firebaseapp.com",
   projectId: "oplord-carloan",
-  storageBucket: "oplord-carloan.firebasestorage.app",
-  messagingSenderId: "484543734858",
-  appId: "1:484543734858:web:9aeb6d9c7011e3c4f2f2b3",
-  measurementId: "G-D0NXWNX169"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// ===== APP LOGIC =====
+// ===== SETTINGS =====
+const INITIAL_LOAN = 57504.31;
 
 let history = [];
-let outstanding = 57504.31;
+let outstanding = INITIAL_LOAN;
 
-// Format currency
+// ===== UTIL =====
 function format(num) {
     return Number(num).toLocaleString('en-MY', {
         minimumFractionDigits: 2,
@@ -136,17 +115,15 @@ function format(num) {
     });
 }
 
-// Date
 function getCurrentDate() {
     return new Date().toLocaleDateString('en-MY');
 }
 
 document.getElementById("currentDate").innerText = getCurrentDate();
 
-// ===== LOAD DATA =====
-async function loadFromFirestore() {
-    const q = query(collection(db, "loanHistory"), orderBy("date"));
-
+// ===== LOAD =====
+async function loadData() {
+    const q = query(collection(db, "loanHistory"), orderBy("timestamp"));
     const snapshot = await getDocs(q);
 
     history = [];
@@ -158,20 +135,22 @@ async function loadFromFirestore() {
         });
     });
 
-    if (history.length > 0) {
-        outstanding = history[history.length - 1].remaining;
-    }
+    // ✅ Recalculate outstanding (BEST METHOD)
+    outstanding = INITIAL_LOAN;
+
+    history.forEach(r => {
+        outstanding -= r.payment;
+    });
 
     renderTable();
 }
 
-// ===== ADD PAYMENT =====
+// ===== ADD =====
 window.makePayment = async function () {
-    let paymentInput = document.getElementById("payment").value;
-    let payment = parseFloat(paymentInput.replace(/,/g, ''));
+    let payment = parseFloat(document.getElementById("payment").value);
 
     if (isNaN(payment) || payment <= 0) {
-        alert("Invalid payment amount");
+        alert("Invalid payment");
         return;
     }
 
@@ -180,19 +159,15 @@ window.makePayment = async function () {
         return;
     }
 
-    outstanding -= payment;
-
-    const record = {
+    await addDoc(collection(db, "loanHistory"), {
         date: getCurrentDate(),
         payment: payment,
-        remaining: outstanding
-    };
-
-    await addDoc(collection(db, "loanHistory"), record);
+        timestamp: serverTimestamp()
+    });
 
     document.getElementById("payment").value = "";
 
-    loadFromFirestore();
+    loadData();
 };
 
 // ===== DELETE =====
@@ -201,7 +176,7 @@ window.deleteRow = async function (index) {
 
     await deleteDoc(doc(db, "loanHistory", record.id));
 
-    loadFromFirestore();
+    loadData();
 };
 
 // ===== RENDER =====
@@ -215,7 +190,6 @@ function renderTable() {
         row.innerHTML = `
             <td>${r.date}</td>
             <td>RM ${format(r.payment)}</td>
-            <td>RM ${format(r.remaining)}</td>
             <td>
                 <button class="deleteBtn" onclick="deleteRow(${index})">
                     <img src="https://cdn-icons-png.flaticon.com/512/1214/1214428.png">
@@ -229,8 +203,8 @@ function renderTable() {
     document.getElementById("outstanding").value = format(outstanding);
 }
 
-// INITIAL LOAD
-loadFromFirestore();
+// INIT
+loadData();
 
 </script>
 
