@@ -6,72 +6,72 @@
 
 <style>
 body{
-    font-family:Arial;
-    max-width:900px;
-    margin:40px auto;
+font-family:Arial;
+max-width:900px;
+margin:40px auto;
 }
 
 input,button{
-    padding:8px;
-    margin:5px 0;
-    width:100%;
-    font-size:15px;
+padding:8px;
+margin:5px 0;
+width:100%;
+font-size:15px;
 }
 
 input[readonly]{
-    background:#f5f5f5;
-    font-weight:bold;
+background:#f5f5f5;
+font-weight:bold;
 }
 
 table{
-    width:100%;
-    margin-top:20px;
-    border-collapse:collapse;
+width:100%;
+margin-top:20px;
+border-collapse:collapse;
 }
 
 th,td{
-    border:1px solid #ccc;
-    padding:8px;
-    text-align:center;
+border:1px solid #ccc;
+padding:8px;
+text-align:center;
 }
 
 th{
-    background:#f0f0f0;
+background:#f0f0f0;
 }
 
-/* ICON BUTTONS */
+/* icon buttons */
 .btn{
-    background:none;
-    border:none;
-    padding:0;
-    margin:0;
-    width:auto;
-    cursor:pointer;
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
+background:none;
+border:none;
+padding:0;
+margin:0;
+width:auto;
+cursor:pointer;
+display:inline-flex;
+align-items:center;
+justify-content:center;
 }
 
 .btn img{
-    width:20px;
-    height:20px;
-    display:block;
-    pointer-events:none;
+width:20px;
+height:20px;
+display:block;
+pointer-events:none;
 }
 
 .undoBtn{
-    background:none;
-    padding:0;
+background:none;
+padding:0;
 }
 
 .resetBtn{
-    background:red;
-    color:white;
+background:red;
+color:white;
 }
 
 .deletedRow{
-    color:red;
-    font-weight:bold;
+color:red;
+font-weight:bold;
 }
 </style>
 </head>
@@ -99,7 +99,10 @@ placeholder="Enter payment amount"
 Make Payment
 </button>
 
-<button onclick="resetData()" class="resetBtn">
+<button
+onclick="resetData()"
+class="resetBtn"
+>
 Reset All Data
 </button>
 
@@ -136,20 +139,20 @@ serverTimestamp
 }
 from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-const firebaseConfig = {
-apiKey: "AIzaSyCe185glXDN4rh5XeagVMLGjSxcg6g2ZQI",
-authDomain: "oplord-carloan.firebaseapp.com",
-projectId: "oplord-carloan",
-storageBucket: "oplord-carloan.firebasestorage.app",
-messagingSenderId: "484543734858",
-appId: "1:484543734858:web:9aeb6d9c7011e3c4f2f2b3",
-measurementId: "G-D0NXWNX169"
+const firebaseConfig={
+apiKey:"AIzaSyCe185glXDN4rh5XeagVMLGjSxcg6g2ZQI",
+authDomain:"oplord-carloan.firebaseapp.com",
+projectId:"oplord-carloan",
+storageBucket:"oplord-carloan.firebasestorage.app",
+messagingSenderId:"484543734858",
+appId:"1:484543734858:web:9aeb6d9c7011e3c4f2f2b3",
+measurementId:"G-D0NXWNX169"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
 
-const INITIAL_LOAN = 57517.55;
+const INITIAL_LOAN=57517.55;
 
 let history=[];
 let outstanding=INITIAL_LOAN;
@@ -300,6 +303,7 @@ history=[];
 deletedCache={};
 outstanding=INITIAL_LOAN;
 
+recalcOutstanding();
 renderTable();
 
 };
@@ -315,8 +319,7 @@ table.innerHTML="";
 
 history.forEach((r,index)=>{
 
-const row=
-document.createElement("tr");
+const row=document.createElement("tr");
 
 if(r.deleted){
 
@@ -325,9 +328,9 @@ row.classList.add(
 );
 
 row.innerHTML=`
-<td colspan="2">
-Payment Deleted
-</td>
+<td>${r.date}</td>
+
+<td>Payment Deleted</td>
 
 <td>
 <button
