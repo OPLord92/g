@@ -1,281 +1,371 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8"> <!-- ✅ FIX emoji issue -->
+<meta charset="UTF-8">
+<title>Car Loan Management System</title>
 
-    <title>Car Loan Management System</title>
+<style>
+body{
+    font-family:Arial;
+    max-width:900px;
+    margin:40px auto;
+}
 
-    <style>
-        body {
-            font-family: Arial;
-            max-width: 900px;
-            margin: 40px auto;
-        }
+input,button{
+    padding:8px;
+    margin:5px 0;
+    width:100%;
+    font-size:15px;
+}
 
-        input, button {
-            padding: 8px;
-            margin: 5px 0;
-            width: 100%;
-            font-size: 15px;
-        }
+input[readonly]{
+    background:#f5f5f5;
+    font-weight:bold;
+}
 
-        input[readonly] {
-            background-color: #f5f5f5;
-            font-weight: bold;
-        }
+table{
+    width:100%;
+    margin-top:20px;
+    border-collapse:collapse;
+}
 
-        table {
-            width: 100%;
-            margin-top: 20px;
-            border-collapse: collapse;
-        }
+th,td{
+    border:1px solid #ccc;
+    padding:8px;
+    text-align:center;
+}
 
-        th, td {
-            border: 1px solid #ccc;
-            padding: 8px;
-            text-align: center;
-        }
+th{
+    background:#f0f0f0;
+}
 
-        th {
-            background: #f0f0f0;
-        }
+/* ICON BUTTONS */
+.btn{
+    background:none;
+    border:none;
+    padding:0;
+    margin:0;
+    width:auto;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+}
 
-        .btn {
-            border: none;
-            cursor: pointer;
-            background: transparent;
-        }
+.btn img{
+    width:20px;
+    height:20px;
+    display:block;
+    pointer-events:none;
+}
 
-        .btn img {
-            width: 20px;
-            height: 20px;
-        }
+.undoBtn{
+    background:none;
+    padding:0;
+}
 
-        .undoBtn {
-            background: orange;
-            padding: 5px;
-        }
+.resetBtn{
+    background:red;
+    color:white;
+}
 
-        .resetBtn {
-            background: red;
-            color: white;
-        }
-
-        .deletedRow {
-            color: red;
-            font-weight: bold;
-        }
-    </style>
+.deletedRow{
+    color:red;
+    font-weight:bold;
+}
+</style>
 </head>
 
 <body>
 
 <h2>Car Loan Management System</h2>
 
-<p><strong>Current Date:</strong> <span id="currentDate"></span></p>
+<p>
+<strong>Current Date:</strong>
+<span id="currentDate"></span>
+</p>
 
 <label>Outstanding (RM):</label>
 <input type="text" id="outstanding" readonly>
 
 <label>Payment (RM):</label>
-<input type="text" id="payment" placeholder="Enter payment amount">
+<input
+type="text"
+id="payment"
+placeholder="Enter payment amount"
+>
 
-<button onclick="makePayment()">Make Payment</button>
-<button onclick="resetData()" class="resetBtn">Reset All Data</button>
+<button onclick="makePayment()">
+Make Payment
+</button>
+
+<button onclick="resetData()" class="resetBtn">
+Reset All Data
+</button>
 
 <h3>Payment History</h3>
 
 <table>
-    <thead>
-        <tr>
-            <th>Date</th>
-            <th>Payment</th>
-            <th>Action</th>
-        </tr>
-    </thead>
-    <tbody id="historyTable"></tbody>
+<thead>
+<tr>
+<th>Date</th>
+<th>Payment</th>
+<th>Action</th>
+</tr>
+</thead>
+
+<tbody id="historyTable"></tbody>
+
 </table>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import {
-    getFirestore,
-    collection,
-    addDoc,
-    getDocs,
-    deleteDoc,
-    doc,
-    query,
-    orderBy,
-    serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// 🔥 YOUR FIREBASE CONFIG
+import { initializeApp }
+from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+
+import {
+getFirestore,
+collection,
+addDoc,
+getDocs,
+deleteDoc,
+doc,
+query,
+orderBy,
+serverTimestamp
+}
+from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
 const firebaseConfig = {
-  apiKey: "AIzaSyCe185glXDN4rh5XeagVMLGjSxcg6g2ZQI",
-  authDomain: "oplord-carloan.firebaseapp.com",
-  projectId: "oplord-carloan",
-  storageBucket: "oplord-carloan.firebasestorage.app",
-  messagingSenderId: "484543734858",
-  appId: "1:484543734858:web:9aeb6d9c7011e3c4f2f2b3",
-  measurementId: "G-D0NXWNX169"
+apiKey: "AIzaSyCe185glXDN4rh5XeagVMLGjSxcg6g2ZQI",
+authDomain: "oplord-carloan.firebaseapp.com",
+projectId: "oplord-carloan",
+storageBucket: "oplord-carloan.firebasestorage.app",
+messagingSenderId: "484543734858",
+appId: "1:484543734858:web:9aeb6d9c7011e3c4f2f2b3",
+measurementId: "G-D0NXWNX169"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// ===== SETTINGS =====
 const INITIAL_LOAN = 57517.55;
 
-let history = [];
-let outstanding = INITIAL_LOAN;
-let deletedCache = {};
+let history=[];
+let outstanding=INITIAL_LOAN;
+let deletedCache={};
 
-// ===== UTIL =====
-function format(num) {
-    return Number(num).toLocaleString('en-MY', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    });
+function format(num){
+return Number(num).toLocaleString(
+'en-MY',
+{
+minimumFractionDigits:2,
+maximumFractionDigits:2
+}
+);
 }
 
-function getCurrentDate() {
-    return new Date().toLocaleDateString('en-MY');
+function getCurrentDate(){
+return new Date().toLocaleDateString('en-MY');
 }
 
-document.getElementById("currentDate").innerText = getCurrentDate();
+document.getElementById(
+"currentDate"
+).innerText=getCurrentDate();
 
-// ===== LOAD =====
-async function loadData() {
-    const q = query(collection(db, "loanHistory"), orderBy("timestamp"));
-    const snapshot = await getDocs(q);
+async function loadData(){
 
-    history = [];
+const q=query(
+collection(db,"loanHistory"),
+orderBy("timestamp")
+);
 
-    snapshot.forEach(docSnap => {
-        history.push({
-            id: docSnap.id,
-            ...docSnap.data(),
-            deleted: false
-        });
-    });
+const snapshot=await getDocs(q);
 
-    recalcOutstanding();
-    renderTable();
+history=[];
+
+snapshot.forEach(docSnap=>{
+history.push({
+id:docSnap.id,
+...docSnap.data(),
+deleted:false
+});
+});
+
+recalcOutstanding();
+renderTable();
 }
 
-// ===== RECALCULATE =====
-function recalcOutstanding() {
-    outstanding = INITIAL_LOAN;
+function recalcOutstanding(){
 
-    history.forEach(r => {
-        if (!r.deleted) {
-            outstanding -= r.payment;
-        }
-    });
+outstanding=INITIAL_LOAN;
 
-    document.getElementById("outstanding").value = format(outstanding);
+history.forEach(r=>{
+if(!r.deleted){
+outstanding-=r.payment;
+}
+});
+
+document.getElementById(
+"outstanding"
+).value=format(outstanding);
+
 }
 
-// ===== ADD PAYMENT =====
-window.makePayment = async function () {
-    let payment = parseFloat(document.getElementById("payment").value);
+window.makePayment=async function(){
 
-    if (isNaN(payment) || payment <= 0) {
-        alert("Invalid payment");
-        return;
-    }
+let payment=parseFloat(
+document.getElementById(
+"payment"
+).value
+);
 
-    if (payment > outstanding) {
-        alert("Payment exceeds outstanding");
-        return;
-    }
+if(isNaN(payment)||payment<=0){
+alert("Invalid payment");
+return;
+}
 
-    await addDoc(collection(db, "loanHistory"), {
-        date: getCurrentDate(),
-        payment: payment,
-        timestamp: serverTimestamp()
-    });
+if(payment>outstanding){
+alert("Payment exceeds outstanding");
+return;
+}
 
-    document.getElementById("payment").value = "";
-    loadData();
+await addDoc(
+collection(db,"loanHistory"),
+{
+date:getCurrentDate(),
+payment:payment,
+timestamp:serverTimestamp()
+}
+);
+
+document.getElementById(
+"payment"
+).value="";
+
+loadData();
+
 };
 
-// ===== SOFT DELETE =====
-window.deleteRow = function (index) {
-    history[index].deleted = true;
-    deletedCache[index] = history[index];
+window.deleteRow=function(index){
 
-    recalcOutstanding();
-    renderTable();
+history[index].deleted=true;
+
+deletedCache[index]=history[index];
+
+recalcOutstanding();
+renderTable();
+
 };
 
-// ===== UNDO =====
-window.undoDelete = function (index) {
-    if (!deletedCache[index]) return;
+window.undoDelete=function(index){
 
-    history[index].deleted = false;
-    delete deletedCache[index];
+if(!deletedCache[index]) return;
 
-    recalcOutstanding();
-    renderTable();
+history[index].deleted=false;
+
+delete deletedCache[index];
+
+recalcOutstanding();
+renderTable();
+
 };
 
-// ===== RESET =====
-window.resetData = async function () {
-    if (!confirm("Reset all data?")) return;
+window.resetData=async function(){
 
-    const snapshot = await getDocs(collection(db, "loanHistory"));
+if(!confirm("Reset all data?")) return;
 
-    const promises = [];
-    snapshot.forEach(docSnap => {
-        promises.push(deleteDoc(doc(db, "loanHistory", docSnap.id)));
-    });
+const snapshot=
+await getDocs(
+collection(db,"loanHistory")
+);
 
-    await Promise.all(promises);
+const promises=[];
 
-    history = [];
-    deletedCache = {};
-    outstanding = INITIAL_LOAN;
+snapshot.forEach(docSnap=>{
+promises.push(
+deleteDoc(
+doc(
+db,
+"loanHistory",
+docSnap.id
+)
+)
+);
+});
 
-    renderTable();
+await Promise.all(promises);
+
+history=[];
+deletedCache={};
+outstanding=INITIAL_LOAN;
+
+renderTable();
+
 };
 
-// ===== RENDER =====
-function renderTable() {
-    const table = document.getElementById("historyTable");
-    table.innerHTML = "";
+function renderTable(){
 
-    history.forEach((r, index) => {
-        const row = document.createElement("tr");
+const table=
+document.getElementById(
+"historyTable"
+);
 
-        if (r.deleted) {
-            row.classList.add("deletedRow");
-            row.innerHTML = `
-                <td colspan="2">Payment Deleted</td>
-                <td>
-                    <button class="btn undoBtn" onclick="undoDelete(${index})">
-                        <img src="https://cdn-icons-png.flaticon.com/512/54/54602.png">
-                    </button>
-                </td>
-            `;
-        } else {
-            row.innerHTML = `
-                <td>${r.date}</td>
-                <td>RM ${format(r.payment)}</td>
-                <td>
-                    <button class="btn" onclick="deleteRow(${index})">
-                        <img src="https://cdn-icons-png.flaticon.com/512/1214/1214428.png">
-                    </button>
-                </td>
-            `;
-        }
+table.innerHTML="";
 
-        table.appendChild(row);
-    });
+history.forEach((r,index)=>{
+
+const row=
+document.createElement("tr");
+
+if(r.deleted){
+
+row.classList.add(
+"deletedRow"
+);
+
+row.innerHTML=`
+<td colspan="2">
+Payment Deleted
+</td>
+
+<td>
+<button
+class="btn undoBtn"
+onclick="undoDelete(${index})"
+>
+<img src="https://cdn-icons-png.flaticon.com/512/54/54602.png">
+</button>
+</td>
+`;
+
+}else{
+
+row.innerHTML=`
+<td>${r.date}</td>
+
+<td>
+RM ${format(r.payment)}
+</td>
+
+<td>
+<button
+class="btn"
+onclick="deleteRow(${index})"
+>
+<img src="https://cdn-icons-png.flaticon.com/512/1214/1214428.png">
+</button>
+</td>
+`;
+
 }
 
-// INIT
+table.appendChild(row);
+
+});
+
+}
+
 loadData();
 
 </script>
